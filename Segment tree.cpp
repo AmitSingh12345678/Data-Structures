@@ -79,49 +79,84 @@ void Tez() {
 }
 
 class SegTree{
-	private:
+	public:
 	int n;
 	vector<int>tree;
-	vector<int>a;
+	vector<int>lazy;
 	
 	public:
 	SegTree(vector<int>arr){
-		this->n=arr.size()-1; 
-		this->a=arr;
-		this->tree.resize(4*n,0);
-		this->build(1,1,n);
+		n=arr.size()-1; // as arr[0] is useless 
+		tree.resize(4*n,0);
+		lazy.resize(4*n,0);
+		build(arr,1,1,n);
 	}
 	int query(int ql,int qr){
-		return this->query_helper(1,ql,qr,1,n);
+		return query_helper(1,ql,qr,1,n);
+	}
+	int query(int ind){
+		return query_helper(1,ind,1,n);
 	}
 	void pointUpdate(int ind,int val){
 		pointUpdate_helper(1,1,n,ind,val);
 	}
+	void rangeUpdate(int ql,int qr,int val){
+		rangeUpdate_helper(1,1,n,ql,qr,val);
+	}
 	
 	private:
-	void build(int node,int l,int r){
+	void build(vector<int>&a,int node,int l,int r){
 		if(l==r){
 			tree[node]=a[l];
 			return;
 		}
 		int mid=(l+r)/2;
-		build(node*2,l,mid);  // left child
-		build(node*2+1,mid+1,r); // right child
+		build(a,node*2,l,mid);  // left child
+		build(a,node*2+1,mid+1,r); // right child
 		recal(node); // depends on type of query
 	}
 	
 	int query_helper(int node,int ql,int qr,int l,int r){
+		if(lazy[node]!=0){
+			tree[node]+=(r-l+1)*lazy[node];
+			if(l!=r){
+				lazy[node*2]+=lazy[node];
+				lazy[node*2+1]+=lazy[node];
+			}
+			lazy[node]=0;
+		}
 		if(qr<l || ql>r) return 0; // if query is out of bounds
 		if(l>=ql && r<=qr) return tree[node];// if query completely covers the range
 		int mid=(l+r)/2;
 		int leftVal=query_helper(node*2,ql,qr,l,mid);
 		int rightVal=query_helper(node*2+1,ql,qr,mid+1,r);
-		return leftVal^rightVal;
+		return leftVal+rightVal;
+	}
+	
+	int query_helper(int node,int ind,int l,int r){
+		if(lazy[node]!=0){
+			tree[node]+=(r-l+1)*lazy[node];
+			if(l!=r){
+				lazy[node*2]+=lazy[node];
+				lazy[node*2+1]+=lazy[node];
+			}
+			lazy[node]=0;
+		}
+		
+		if(l==r){
+			return tree[node];
+		}
+		int mid=(l+r)/2;
+		if(ind<=mid){
+			return query_helper(node*2,ind,l,mid);
+		}else{
+			return query_helper(node*2+1,ind,mid+1,r);
+		}
 	}
 	
 	void pointUpdate_helper(int node,int l,int r,int ind,int val){
 		if(l==r){
-			tree[node]=a[l]=val;
+			tree[node]=val;
 			return;
 		}
 		int mid=(l+r)/2;
@@ -132,8 +167,34 @@ class SegTree{
 		}
 		recal(node); // recalcuating values
 	}
+	
+	void rangeUpdate_helper(int node,int l,int r,int ql,int qr,int val){
+		if(lazy[node]!=0){
+			tree[node]+=(r-l+1)*lazy[node];
+			if(l!=r){
+				// mark child as lazy
+				lazy[node*2]+=lazy[node];
+				lazy[node*2+1]+=lazy[node];
+			}
+			lazy[node]=0;
+		}
+		if(qr<l || ql>r) return; // if query is out of bounds
+		if(ql<=l && r<=qr) {
+			tree[node]+=(r-l+1)*val;
+			if(l!=r){
+				lazy[node*2]+=val;
+				lazy[node*2+1]+=val;
+			}
+			return;
+		}
+		int mid=(l+r)/2;
+		rangeUpdate_helper(node*2,l,mid,ql,qr,val);
+		rangeUpdate_helper(node*2+1,mid+1,r,ql,qr,val);
+		recal(node);
+	}
+	
 	void recal(int node){
-		tree[node]=tree[node*2]^tree[node*2+1];
+		tree[node]=tree[node*2]+tree[node*2+1];
 	}
 	
 };
@@ -145,14 +206,16 @@ void solve() {
 	fo(i,1,n) cin>>v[i];
 	SegTree segtree=SegTree(v);
 	fo(i,1,q){
-		int l,r;
-		cin>>l>>r;
-		// if(tp==2){
-		int ans=segtree.query(l,r);
-	    cout<<ans<<endl;
-	    // }else{
-	    // segtree.pointUpdate(l,r);
-	    // }
+		int tp,l,r,val;
+		cin>>tp;
+		if(tp==2){
+			cin>>l>>r;
+			int ans=segtree.query(l,r);
+		    cout<<ans<<endl;
+	    }else{
+		    cin>>l>>r>>val;
+		    segtree.rangeUpdate(l,r,val);
+	    }
 	}
 	
 }
